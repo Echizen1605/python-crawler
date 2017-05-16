@@ -15,7 +15,9 @@ res = re.compile(r'render_data = \[(\{.*?\"status\".*?\"hit\".*?\})',re.S)
 with open('./data1.json','r') as fp:
 	data = json.load(fp)
 
-dict1 = {'comment':[],'content_text':[],'create_time':[],'user_text':[],'pic_list':[]}
+dict1 = {'url':[],'comment':[],'content_text':[],'create_time':[],'user_text':[],'pic_list':[]}
+
+count = 1
 
 for key in data.keys():
 	comment = []
@@ -24,9 +26,16 @@ for key in data.keys():
 	user_text = None
 	pic_list = []
 
-	response_key = requests.get(key)
+	try:
+		response_key = requests.get(key)
+		response_value = requests.get(data[key])
+	except Exception as e:
+		print str(count) + " No0"
+		count += 1
+		print data[key]
+		continue
+
 	key_json = response_key.json()
-	response_value = requests.get(data[key])
 
 	# obtain comment
 	if(len(key_json.keys()) > 2):
@@ -39,6 +48,9 @@ for key in data.keys():
 		list1 = res.findall(response_value.content)[0]
 		js = json.loads(list1)
 	except Exception as e:
+		print str(count) + " No1"
+		count += 1
+		print data[key]
 		continue
 
 	create_time = js['status']['created_at']
@@ -48,27 +60,31 @@ for key in data.keys():
 	if js['status'].has_key('retweeted_status'):
 		try:
 			content_text = js['status']['retweeted_status']['text']
-			if len(js['status']['retweeted_status']['pic_ids']) > 0:
-				origin_pic = js['status']['retweeted_status']['original_pic']
-				try:
-					# b_url = res1.findall(origin_pic)[0]
-					suffix = os.path.splitext(origin_pic)[1]
-					b_url = os.path.split(os.path.splitext(origin_pic)[0])[0]
-				except Exception as e:
-					print js['status']['retweeted_status']
-					break
-				pic_list = js['status']['retweeted_status']['pic_ids']
-				for i in range(len(pic_list)):
-					pic_list[i] = b_url + "/" + pic_list[i] + suffix
-			else:
-				try:
-					pic_list = []
-					origin_pic = js['status']['retweeted_status']['page_info']['page_pic']['url']
-					pic_list.append(origin_pic)
-				except Exception as e:
-					pass
+			if js['status']['retweeted_status'].has_key('pic_ids'):
+				if len(js['status']['retweeted_status']['pic_ids']) > 0:
+					origin_pic = js['status']['retweeted_status']['original_pic']
+					try:
+						# b_url = res1.findall(origin_pic)[0]
+						suffix = os.path.splitext(origin_pic)[1]
+						b_url = os.path.split(os.path.splitext(origin_pic)[0])[0]
+					except Exception as e:
+						print js['status']['retweeted_status']
+						break
+					pic_list = js['status']['retweeted_status']['pic_ids']
+					for i in range(len(pic_list)):
+						pic_list[i] = b_url + "/" + pic_list[i] + suffix
+				else:
+					try:
+						pic_list = []
+						origin_pic = js['status']['retweeted_status']['page_info']['page_pic']['url']
+						pic_list.append(origin_pic)
+					except Exception as e:
+						pass
 		except Exception as ex:
-			continue
+			print str(count) + " No2"
+			print data[key]
+			count += 1
+			break
 	else:
 		try:
 			if len(js['status']['pic_ids']) > 0:
@@ -80,9 +96,12 @@ for key in data.keys():
 				for i in range(len(pic_list)):
 					pic_list[i] = b_url + "/" + pic_list[i] + suffix
 		except Exception as ex:
+			print str(count) + " No3"
+			print data[key]
+			count += 1
 			continue
 
-
+	dict1['url'].append(data[key])
 	dict1['comment'].append(comment)
 	dict1['content_text'].append(content_text)
 	dict1['create_time'].append(create_time)
@@ -123,7 +142,8 @@ for key in data.keys():
 	    # break
 	    # writer.writerow({'first_name': 'Lovely', 'last_name': 'Spam'})
 	    # writer.writerow({'first_name': 'Wonderful', 'last_name': 'Spam'})
-	print "OK"
+	print str(count) + " OK"
+	count += 1
 	time.sleep(1)
 
 with open('data_data.json','w') as fp:
